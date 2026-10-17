@@ -202,7 +202,8 @@ def vsx_lookup(ra, dec, radius="20s"):
             "name": str(row["Name"]).strip(),
             "type": str(row["Type"]).strip(),
             "period_d": str(row["Period"]).strip(),
-            "sep_arcsec": float(row["_r"]) * 3600.0 if "_r" in res[0].colnames else None,
+            # Vizier's _r column is already in arcsec for a cone search
+            "sep_arcsec": float(row["_r"]) if "_r" in res[0].colnames else None,
         })
     return {"available": True, "matches": out}
 
@@ -249,6 +250,11 @@ def main(argv=None):
     lopsided_dips = [d for d in dips if d["ratio"] <= 0.67 or d["ratio"] >= 1.5]
     # the dip we actually claim: the deepest one that is also lopsided
     best = max(lopsided_dips, key=lambda d: d["depth"]) if lopsided_dips else deepest
+    if not (0.0 < best["depth"] < 1.0):
+        # a dip cannot exceed the total flux; guard against bad products
+        print(json.dumps({"kepid": args.kepid,
+                          "error": f"nonsense depth {best['depth']:.3f}"}, indent=1))
+        return 1
     report = {
         "kepid": args.kepid,
         **meta,
