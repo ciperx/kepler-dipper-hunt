@@ -104,6 +104,28 @@ On a 2-core / 7.6 GB VPS with 20 download threads the scan runs at roughly
 }
 ```
 
+## Calibration on the known positive
+
+The pipeline is validated against the one object whose behaviour is not in
+doubt: **KIC 8462852 (Tabby's Star), Quarter 16**, the 22 %-deep event at
+BJD 1519.
+
+```
+depth 11.68 %   SNR 4636
+ratio 1.67 (tenth maximum; half maximum quantises to 1.00)
+periodicity: none
+centroid shift 0.014 millipixel   (limit 1.0)
+VSX: no match
+raw SAP depth 20.5 %  ->  dip present in undetrended flux
+=> all six photometric checks pass
+```
+
+The ratio column is the interesting one. At half maximum both wings are
+shorter than one 29.4-minute cadence, so the measurement quantises to
+0.5 / 0.5 and reads as perfectly symmetric. Measuring at **tenth** maximum
+resolves the wings and recovers the real 1.67x asymmetry. A pipeline that
+only looks at half maximum rejects Tabby's Star itself.
+
 ## Notes and limitations
 
 * Kepler long-cadence sampling is 29.4 minutes, so dips shorter than ~1.5 h
