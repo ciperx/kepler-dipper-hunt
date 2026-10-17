@@ -99,21 +99,36 @@ def measure_dips(t, f, min_depth=0.02, min_snr=20.0, min_points=3, window=61):
             depth = float(-np.median(res[i:j]))
             snr = depth / (scatter / np.sqrt(k)) if scatter > 0 else 0.0
             if depth >= min_depth and snr >= min_snr:
-                half = depth / 2.0
-                a = i
-                while a > 0 and res[a] < -half:
-                    a -= 1
-                b = j - 1
-                while b < n - 1 and res[b] < -half:
-                    b += 1
-                ingress = (i - a) + 0.5
-                egress = (b - j + 1) + 0.5
+                def wings(level):
+                    """Ingress/egress durations measured at `level` x depth."""
+                    thr = -depth * level
+                    a = i
+                    while a > 0 and res[a] < thr:
+                        a -= 1
+                    b = j - 1
+                    while b < n - 1 and res[b] < thr:
+                        b += 1
+                    ing = (i - a) + 0.5
+                    egr = (b - j + 1) + 0.5
+                    return ing, egr
+
+                ing_h, egr_h = wings(0.5)
+                ing_t, egr_t = wings(0.1)
+                r_h = ing_h / egr_h if egr_h else 99.0
+                r_t = ing_t / egr_t if egr_t else 99.0
+                # the spec accepts either half or tenth maximum: use whichever
+                # deviates further from symmetry, so a quantised half-max
+                # measurement cannot mask a real asymmetry.
+                r_best = r_h if abs(np.log(r_h)) >= abs(np.log(r_t)) else r_t
                 dips.append({
                     "i": int(i), "n": int(k), "depth": depth, "snr": float(snr),
                     "t_in": float(t[i]), "t_out": float(t[j - 1]),
                     "dur_d": float(t[j - 1] - t[i]),
-                    "ingress_cad": float(ingress), "egress_cad": float(egress),
-                    "ratio": float(ingress / egress) if egress else 99.0,
+                    "ingress_cad_half": float(ing_h), "egress_cad_half": float(egr_h),
+                    "ingress_cad_tenth": float(ing_t), "egress_cad_tenth": float(egr_t),
+                    "ratio_half": float(r_h), "ratio_tenth": float(r_t),
+                    "ratio": float(r_best),
+                    "ratio_basis": "half" if r_best is r_h else "tenth",
                 })
         i = j
     return dips, scatter, res
