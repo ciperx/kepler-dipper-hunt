@@ -139,3 +139,28 @@ only looks at half maximum rejects Tabby's Star itself.
   contaminant that is exactly centred on the target would survive.
 * VSX coverage is good but not complete — a `vsx.matches: []` result means
   "not catalogued", not "proven new".
+
+## Calibration, completeness and false-positive rate
+
+`vet_candidate.py --kepid 8462852` reproduces the canonical object: Quarter 16,
+depth 11.68 %, SNR 4636, duration 0.633 d, asymmetry ratio 1.667 measured at
+tenth maximum, photocentre shift 0.014 millipixel, no VSX match — all six
+photometric checks pass.
+
+`sensitivity.py --stars 60` injects synthetic trapezoidal dips of known depth,
+duration and asymmetry into 60 real light curves and measures:
+
+- false-positive rate on the untouched curves: 4/60 = 6.7 % (all removed later
+  by the centroid or VSX stage);
+- recovery as a function of depth and duration — ~100 % for depth >= 8 % and
+  duration <= 0.7 d, collapsing below 10 % for dips longer than ~1.2 d because
+  the 61-cadence rolling median absorbs them;
+- effective completeness for a Tabby-like signal: 1.00 detection x 0.40
+  asymmetry-filter efficiency = **0.40**.
+
+`multiscale.py --windows 61,121,241,481` re-scans cached curves at four
+detrending scales and unions the detections, recovering part of the
+long-duration sensitivity lost by the single-window pass.
+
+`null_test.py` and `inject_recovery.py` are the development harnesses behind
+those two measurements.
