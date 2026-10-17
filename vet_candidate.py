@@ -230,14 +230,19 @@ def main(argv=None):
         print(json.dumps({"kepid": args.kepid, "error": "no dips found"}, indent=1))
         return 1
 
-    best = max(dips, key=lambda d: d["depth"])
+    deepest = max(dips, key=lambda d: d["depth"])
+    lopsided_dips = [d for d in dips if d["ratio"] <= 0.67 or d["ratio"] >= 1.5]
+    # the dip we actually claim: the deepest one that is also lopsided
+    best = max(lopsided_dips, key=lambda d: d["depth"]) if lopsided_dips else deepest
     report = {
         "kepid": args.kepid,
         **meta,
         "n_cadences_used": int(len(f)),
         "robust_scatter": scatter,
         "dips": dips,
-        "deepest": best,
+        "deepest": deepest,
+        "claimed_dip": best,
+        "n_lopsided_dips": len(lopsided_dips),
         "periodicity": periodicity(dips),
         "centroid": centroid_test(t, mom1, mom2, best, None),
         "vsx": vsx_lookup(meta["ra"], meta["dec"]) if meta["ra"] else {"available": False},
