@@ -189,6 +189,26 @@ def is_lopsided(dip: dict) -> bool:
 # --------------------------------------------------------------------------- #
 # per-star worker
 # --------------------------------------------------------------------------- #
+CENTROID_LIMIT_MILLIPIX = 1.0
+
+
+def centroid_shift(m1, m2, dip, window: int = 61) -> float | None:
+    """Photocentre offset during `dip` in millipixels, de-trended like the flux."""
+    if m1 is None or m2 is None:
+        return None
+    pad = window // 2
+
+    def detr(v):
+        vp = np.pad(v, pad, mode="edge")
+        base = np.array([np.median(vp[i : i + window]) for i in range(len(v))])
+        return v - base
+
+    dx, dy = detr(m1), detr(m2)
+    sl = slice(dip["i"], dip["i"] + dip["n"])
+    mx, my = float(np.median(dx[sl])), float(np.median(dy[sl]))
+    return float(np.hypot(mx, my) * 1000.0)
+
+
 def process(row: tuple[int, str]) -> dict | None:
     kepid, uri = row
     path = fetch(uri, kepid)
@@ -204,6 +224,9 @@ def process(row: tuple[int, str]) -> dict | None:
             t = np.asarray(data["TIME"], float)
             f = np.asarray(data["PDCSAP_FLUX"], float)
             q = np.asarray(data["SAP_QUALITY"], int)
+            names = set(data.columns.names)
+            m1 = np.asarray(data["MOM_CENTR1"], float) if "MOM_CENTR1" in names else None
+            m2 = np.asarray(data["MOM_CENTR2"], float) if "MOM_CENTR2" in names else None
             ra = hdr.get("RA_OBJ")
             dec = hdr.get("DEC_OBJ")
             kmag = hdr.get("KEPMAG")
@@ -212,6 +235,8 @@ def process(row: tuple[int, str]) -> dict | None:
 
     good = np.isfinite(t) & np.isfinite(f) & (q == 0)
     t, f = t[good], f[good]
+    m1 = m1[good] if m1 is not None else None
+    m2 = m2[good] if m2 is not None else None
 
     dips, scatter = find_dips(t, f)
     if not dips:
@@ -231,6 +256,13 @@ def process(row: tuple[int, str]) -> dict | None:
         }
 
     best = max(lopsided, key=lambda d: d["depth"])
+
+    cen = centroid_shift(m1, m2, best)
+    if cen is None or cen > CENTROID_LIMIT_MILLIPIX:
+        _cleanup(path)
+        return {"reject": True, "kepid": int(kepid), "why": f"centroid {cen}",
+                "centroid_millipix": cen}
+
     return {
         "kepid": int(kepid),
         "ra": float(ra) if ra is not None else None,
@@ -243,6 +275,7 @@ def process(row: tuple[int, str]) -> dict | None:
         "periodic": False,
         "period_d": period,
         "max_depth": best["depth"],
+        "centroid_millipix": cen,
         "best": best,
         "dips": lopsided[:8],
     }
