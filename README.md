@@ -25,8 +25,10 @@ is plain Python, runs against public MAST data, and needs no credentials.
    candidates. Depth is the median residual of the run; SNR uses the
    out-of-dip robust scatter scaled by `sqrt(n_cadences)`.
 5. A candidate is **rejected** if its dips phase-fold to a common period
-   (planet / eclipsing binary) or if no dip is lopsided at half depth
-   (ingress/egress ratio outside `[0.67, 1.50]`).
+   (planet / eclipsing binary), if no dip is lopsided (ingress/egress ratio
+   outside `[0.67, 1.50]`), if the astrometric centroid moves by more than
+   1.0 millipixel during the dip (background eclipsing binary), or if the
+   source is catalogued as a variable in VSX.
 
 Survivors are written to `cand.jsonl`; every processed star is appended to
 `seen.log` so runs are resumable.
@@ -40,9 +42,9 @@ vetting requirement:
 |---|---|---|
 | 1 | NEW | manual literature check (see report) |
 | 2 | DEEP | `deepest.depth >= 0.05` and `deepest.snr >= 50` |
-| 3 | LOPSIDED | `deepest.ratio <= 0.67` or `>= 1.5` at half depth |
+| 3 | LOPSIDED | `ratio <= 0.67` or `>= 1.5`, measured at half **and** tenth maximum |
 | 4 | NOT PERIODIC | dip centres do not share a common spacing |
-| 5 | STABLE CENTROID | `MOM_CENTR1/2` shift during the dip `< 1.0 millipixel` |
+| 5 | STABLE CENTROID | `MOM_CENTR1/2` shift during the dip `< 1.0 millipixel` (also enforced in stage 1) |
 | 6 | NOT A KNOWN VARIABLE | VSX cone search at the source position |
 | 7 | NOT INSTRUMENTAL | dip present with `SAP_QUALITY == 0` and in raw `SAP_FLUX` |
 | 8 | REPRODUCIBLE | this repository + the run log |
