@@ -1,0 +1,3 @@
+numpy>=1.24
+astropy>=5.3
+astroquery>=0.4.6
